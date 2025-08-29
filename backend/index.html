@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
+    <style>
+      canvas { border: 1px solid black; }
+      button { margin: 5px; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <button onclick="enableDraw()">✏️ Draw</button>
+      <button onclick="enableErase()">🧽 Erase</button>
+      <button onclick="addText()">🔤 Text</button>
+      <button onclick="clearBoard()">🗑️ Clear</button>
+    </div>
+    <canvas id="c" width="800" height="400"></canvas>
+
+    <script>
+      const canvas = new fabric.Canvas("c", {
+        isDrawingMode: true,
+      });
+
+      // ✏️ Drawing mode
+      function enableDraw() {
+        canvas.isDrawingMode = true;
+        canvas.freeDrawingBrush.width = 3;
+        canvas.freeDrawingBrush.color = "black";
+      }
+
+      // 🧽 Erase mode
+      function enableErase() {
+        canvas.isDrawingMode = true;
+        canvas.freeDrawingBrush.width = 20;
+        canvas.freeDrawingBrush.color = "white"; // erase by drawing white
+      }
+
+      // 🔤 Add text
+      function addText() {
+        const text = new fabric.IText("Write here", {
+          left: 100,
+          top: 100,
+          fontSize: 20,
+          fill: "blue",
+        });
+        canvas.add(text);
+      }
+
+      // 🗑️ Clear canvas
+      function clearBoard() {
+        canvas.clear();
+      }
+    </script>
+  </body>
+</html>
