@@ -97,7 +97,7 @@ useEffect(() => {
        
       }
 
-},[]);
+},[joined]);
   // Socket events
   useEffect(() => {
     if (!socket) return;
