@@ -1,28 +1,34 @@
-import React, { useEffect, useRef, useState, useCallback, use } from "react";
-import { useNavigate, redirect, useLocation } from "react-router-dom";
+import React, { useEffect, useRef, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import VideoCall from "./videoCall";
-const DEFAULT_ICE_SERVERS = [{ urls: "stun:stun1.l.google.com:19302" }];
 import { useVideo } from "../context/videocontext";
 
-
+const DEFAULT_ICE_SERVERS = [{ urls: "stun:stun1.l.google.com:19302" }];
 
 const VideoPage = ({ socket }) => {
-  
-
   const location = useLocation();
   const { UserName, roomID, socketID } = location.state || {};
-const Navigate = useNavigate();
-  const [joined, setJoined] = useState(false);
-  const [localName, setLocalName] = useState(UserName || "");
-  const { remoteName, setRemoteName, localVideoRef, remoteVideoRef,  setLocalStream, localStream, setRemoteStream } = useVideo();
+  const Navigate = useNavigate();
+
+  const {
+    remoteName,
+    setRemoteName,
+    localVideoRef,
+    remoteVideoRef,
+    setLocalStream,
+    localStream,
+    setRemoteStream,
+    initLocalStream,
+  } = useVideo();
 
   const localStreamRef = useRef(null);
-
   const peersRef = useRef({});
   const pendingCandidatesRef = useRef({});
+  const hasJoinedRef = useRef(false);
 
   // Create peer connection
-  const createPeer = useCallback(    (remoteId, username, initiator = false) => {
+  const createPeer = useCallback(
+    (remoteId, username, initiator = false) => {
       if (!localStreamRef.current) {
         console.error("Local stream not ready when creating peer");
         return null;
@@ -47,7 +53,10 @@ const Navigate = useNavigate();
       // ICE candidates → send to signaling server
       peer.onicecandidate = (e) => {
         if (e.candidate) {
-          socket.emit("signal", { to: remoteId, data: { candidate: e.candidate } });
+          socket.emit("signal", {
+            to: remoteId,
+            data: { candidate: e.candidate },
+          });
         }
       };
 
@@ -69,46 +78,58 @@ const Navigate = useNavigate();
 
       return peer;
     },
-    [socket]
+    [socket, remoteVideoRef, setRemoteName, setRemoteStream]
   );
 
-  // Join action → now uses values from location.state
-  const handleJoin = async () => {
-    const name = localName.trim();
-    if (!name) return alert("No username found!");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      localStreamRef.current = stream;
-      setLocalStream(stream);
-      setJoined(true);
-
-      socket.emit("join", { username: name, roomID });
-    } catch (err) {
-      console.error("Could not get local stream:", err);
-      alert("Could not access camera/microphone. Check permissions.");
-    }
-  };
-useEffect(() => {
- if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream;
-       
+  // Auto-initialize stream on mount
+  useEffect(() => {
+    const setupStream = async () => {
+      if (!UserName || !roomID) {
+        alert("Username or Room ID missing!");
+        Navigate("/");
+        return;
       }
 
-},[joined]);
+      try {
+        // Initialize stream from context or get new one
+        let stream = localStream;
+        if (!stream) {
+          stream = await initLocalStream();
+        }
+
+        if (!stream) {
+          alert("Could not access camera/microphone. Check permissions.");
+          return;
+        }
+
+        localStreamRef.current = stream;
+
+        // Set local video
+        if (localVideoRef.current && !localVideoRef.current.srcObject) {
+          localVideoRef.current.srcObject = stream;
+        }
+
+        // Join room only once
+        if (!hasJoinedRef.current) {
+          socket.emit("join", { username: UserName, roomID });
+          hasJoinedRef.current = true;
+        }
+      } catch (err) {
+        console.error("Error setting up stream:", err);
+        alert("Could not access camera/microphone.");
+      }
+    };
+
+    setupStream();
+  }, [UserName, roomID, socket, Navigate, initLocalStream, localStream, localVideoRef]);
+
   // Socket events
   useEffect(() => {
     if (!socket) return;
 
     socket.on("new-user", ({ id, username }) => {
+      console.log("New user joined same room:", username);
       const peer = createPeer(id, username, true);
-      if (peer) peersRef.current[id] = peer;
-    });
-
-    socket.on("user-joined", ({ id, username }) => {
-      const peer = createPeer(id, username, false);
       if (peer) peersRef.current[id] = peer;
     });
 
@@ -133,13 +154,17 @@ useEffect(() => {
           if (data.sdp.type === "offer") {
             const answer = await peer.createAnswer();
             await peer.setLocalDescription(answer);
-            socket.emit("signal", { to: from, data: { sdp: peer.localDescription } });
+            socket.emit("signal", {
+              to: from,
+              data: { sdp: peer.localDescription },
+            });
           }
         } else if (data.candidate) {
           if (peer.remoteDescription) {
             await peer.addIceCandidate(new RTCIceCandidate(data.candidate));
           } else {
-            if (!pendingCandidatesRef.current[from]) pendingCandidatesRef.current[from] = [];
+            if (!pendingCandidatesRef.current[from])
+              pendingCandidatesRef.current[from] = [];
             pendingCandidatesRef.current[from].push(data.candidate);
           }
         }
@@ -162,58 +187,29 @@ useEffect(() => {
 
     return () => {
       socket.off("new-user");
-      socket.off("user-joined");
       socket.off("signal");
       socket.off("user-left");
     };
-  }, [socket, createPeer]);
+  }, [socket, createPeer, remoteVideoRef, setRemoteName]);
 
-  // Cleanup
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
       Object.values(peersRef.current).forEach((peer) => peer.close());
     };
   }, []);
 
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-4">
-      {!joined ? (
-        <div className="w-full max-w-md flex flex-col items-center space-y-4 p-6 bg-white shadow-md rounded-xl">
-          <h2 className="text-2xl font-semibold">Join Video Call</h2>
-          <p className="text-gray-600 text-sm">
-            Room: <span className="font-mono">{roomID || "No room"}</span>
-          </p>
-          <button
-            onClick={handleJoin}
-            className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Join as {localName || "Guest"}
-          </button>
-           <button
-            onClick={() => { Navigate("/chat" , {
-        state: {
-          UserName,
-          roomID,
-          socketID
-        },
-      })
-
-             }}
-            className="w-full px-4 py-2 bg-transparent text-black border rounded-lg hover:bg-red-600"
-          >
-          ⇐ VIDEO WITH WHITEBOARD
-
-          </button>
-        </div>
-      ) : (
-        <VideoCall localName={localName}
-      remoteName={remoteName}
-      localVideoRef={localVideoRef}
-      remoteVideoRef={remoteVideoRef} />
-      )}
+      <VideoCall
+        localName={UserName}
+        remoteName={remoteName}
+        localVideoRef={localVideoRef}
+        remoteVideoRef={remoteVideoRef}
+        socket={socket}
+        roomID={roomID}
+        Navigate={Navigate}
+      />
     </div>
   );
 };
