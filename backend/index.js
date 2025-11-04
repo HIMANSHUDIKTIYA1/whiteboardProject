@@ -6,10 +6,10 @@ import { join } from "path";
 const app = express();
 const server = createServer(app);
 import {Server} from "socket.io";
-import { Socket } from "dgram";
+
 const io = new Server(server, {
   cors: {
-    origin: [  "http://localhost:5173" ],
+    origin: [  "https://hdwhiteboard.netlify.app" ],
     methods: ["GET", "POST"],
     credentials: true
   }
