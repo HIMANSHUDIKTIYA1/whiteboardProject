@@ -8,7 +8,7 @@ import { VideoProvider } from './context/videocontext';
 
 const App = () => {
 
-  const socket = useMemo(() => io( "http://localhost:3000" ), []);
+  const socket = useMemo(() => io( "https://whiteboardproject.onrender.com/" ), []);
 
   return (
       <VideoProvider>

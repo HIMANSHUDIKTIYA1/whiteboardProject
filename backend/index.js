@@ -6,9 +6,10 @@ import { join } from "path";
 const app = express();
 const server = createServer(app);
 import {Server} from "socket.io";
+import { Socket } from "dgram";
 const io = new Server(server, {
   cors: {
-    origin: [  "https://hdwhiteboard.netlify.app" ],
+    origin: [  "http://localhost:5173" ],
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -24,9 +25,12 @@ socket.on("join", ({username, roomID }) => {
   console.log(`${username} joined room ${roomID}`);
   socket.to(roomID).emit("user_notification", {username});
 
-  socket.broadcast.emit("new-user", { id: socket.id, username });
+  socket.to(roomID).emit("new-user", { id: socket.id, username });
 });
-
+ socket.on("chat-message", ({ roomID, from: username , text }) => {
+   console.log(username, text);
+    socket.to(roomID).emit("receive-message", { from: username , text  });
+    });
   socket.on("drawing", ({ roomID, line }) => {
     // Send to sabhi except jisne draw kiya
     socket.to(roomID).emit("drawing", line);
@@ -34,6 +38,7 @@ socket.on("join", ({username, roomID }) => {
   socket.on("signal", ({ to, data }) => {
     socket.to(to).emit("signal", { from: socket.id, username: socket.username, data });
   });
+ 
 socket.on("disconnect", () => {
         console.log("User disconnected", socket.id);
     });
