@@ -73,9 +73,7 @@ socket.on("user_notification", ({ UserName }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         className="text-2xl sm:text-3xl font-bold text-red-500 tracking-wide"
-      >
-        ⚡ Socket ID: <span className="text-white">{socketID}</span>
-      </motion.h1>
+      >⚡</motion.h1>
 
       {/* Join Form */}
       <motion.form

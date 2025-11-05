@@ -428,7 +428,7 @@ const ChatPage = ({ socket }) => {
       <motion.div
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="absolute  sm:top-4 left-[0] sm:left-[25%]  -translate-y-1/2 -translate-[1/2] flex flex-wrap gap-1 sm:gap-2 bg-white/95 backdrop-blur-md p-1 sm:p-3 rounded-xl sm:rounded-2xl shadow-2xl z-40 border border-gray-200 max-w-[95%] sm:max-w-none justify-center"
+        className="absolute  sm:top-4 left-[0] sm:left-[25%]  -translate-y-1/2 -translate-[1/2] flex flex-wrap gap-1 sm:gap-2 bg-white/95 backdrop-blur-md p-[1px] sm:p-3 rounded-xl sm:rounded-2xl shadow-2xl z-40 border border-gray-200 max-w-[95%] sm:max-w-none justify-center"
       >
         {/* Pencil */}
         <motion.button

@@ -9,7 +9,7 @@ import {Server} from "socket.io";
 
 const io = new Server(server, {
   cors: {
-    origin: [  "https://hdwhiteboard.netlify.app" ],
+    origin: [   "https://hdwhiteboard.netlify.app"],
     methods: ["GET", "POST"],
     credentials: true
   }
